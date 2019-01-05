@@ -1,2 +1,4 @@
 .bridge.conf
 .clean.json
+*.log
+*.pyc
