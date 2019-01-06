@@ -37,7 +37,7 @@ def searchDirectory(config, regexpr, callback):
 
 	r = re.compile(regexpr)
 
-	for root, dirs, files in os.walk(config["path"]):
+	for root, dirs, files in os.walk(str(config["path"])):
 		for file in files:
 			if r.match(file):
 				callback(os.path.join(root, file), config)
