@@ -18,3 +18,9 @@ Recommandation: add this script to run every day with the Task Scheduler.
 Create a reverse proxy between your DSM server and the host. This is useful if your IP is not available from internet or you cannot open ports.
 
 Recommandation: add this script to run every 5min with the Task Scheduler.
+
+## Git Backup
+
+Backup all Git repositories. Github and direct Git urls are supported.
+
+Recommandation: add this script to run every day with the Task Scheduler.

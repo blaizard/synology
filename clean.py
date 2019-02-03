@@ -22,7 +22,7 @@ oldTime = now - (60 * 60 * 24) * 2 # 2 days ago
 atLeastOneAction = False
 
 def printAction(type, message):
-	print "%s\t%s" % (type, message)
+	print("%s\t%s" % (type, message))
 	with open(PATH_LOG, "a") as myfile:
 		myfile.write("[%s]\t%s\t%s\n" % (str(datetime.now()), type, message))
 	atLeastOneAction = True
@@ -97,7 +97,7 @@ def handleiOSLivePhoto(path, config):
 			if t < 4:
 				moveToTrash(path, config)
 		except:
-			print "WARNING cannot read video duration of %s" % (path)
+			print("WARNING cannot read video duration of %s" % (path))
 
 """
 Get the video duration
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 	# Load the configuration
 	if not os.path.exists(PATH_CONFIG):
 		with open(PATH_CONFIG, 'w') as f:
-			f.write(json.dumps(defaultConfig, sort_keys=True, indent=4, separators=(',', ': ')))
+			f.write(json.dumps(config, sort_keys=True, indent=4, separators=(',', ': ')))
 	with open(PATH_CONFIG, 'r') as f:
 		configUser = json.load(f)
 		config.update(configUser)

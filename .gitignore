@@ -1,4 +1,5 @@
 .bridge.conf
 .clean.json
+.git-backup.json
 *.log
 *.pyc
