@@ -3,3 +3,4 @@
 .git-backup.json
 *.log
 *.pyc
+trash/

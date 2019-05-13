@@ -87,8 +87,9 @@ Check if it is a live photo and move it to trash
 """
 def handleiOSLivePhoto(path, config):
 
-	correspondingImg = path.replace('.MOV', '.JPG')
-	if os.path.isfile(correspondingImg):
+	correspondingImg1 = path.replace('.MOV', '.JPG')
+	correspondingImg2 = path.replace('.MOV', '.HEIC')
+	if os.path.isfile(correspondingImg1) or os.path.isfile(correspondingImg2):
 
 		try:
 			t = videoDuration(path)
