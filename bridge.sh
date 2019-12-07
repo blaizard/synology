@@ -4,6 +4,10 @@
 # in order to prevent disconnection.
 # Host *
 # ServerAliveInterval 120
+#
+# Also to access the server from external IP, use the followng option in
+# /etc/ssh/sshd_config
+# GatewayPorts yes
 
 path=`dirname "$0"`
 confPath="$path/.bridge.conf"
