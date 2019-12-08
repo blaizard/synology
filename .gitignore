@@ -2,5 +2,6 @@
 .clean.json
 .git-backup.json
 *.log
+*.json
 *.pyc
 trash/
