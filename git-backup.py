@@ -4,6 +4,7 @@
 import os
 import sys
 import json
+import socket
 from datetime import datetime
 import urllib2
 import base64
@@ -19,6 +20,110 @@ def printLog(type, message):
 		myfile.write("[%s]\t%s\t%s\n" % (str(datetime.now()), type, message))
 	atLeastOneAction = True
 
+class Rest:
+	def __init__(self, endpoint = None, headers = {}):
+		self.endpoint = endpoint
+		self.headers = headers
+
+	def _prepareRequest(self, path, headers = {}, data = None):
+		request = urllib2.Request("{}{}".format(self.endpoint, path) if self.endpoint else path, data)
+		
+		# Update headers
+		newHeader = headers.copy()
+		newHeader.update(self.headers)
+		for key, value in newHeader.items():
+			request.add_header(key, value)
+		
+		return request
+
+	def _sendRequest(self, request, raiseOnError):
+		response = None
+		lastErrorCode = 0
+		try:
+			retryCounter = 4
+			while retryCounter:
+				retryCounter -= 1
+				try:
+					response = urllib2.urlopen(request)
+					break
+
+				except urllib2.HTTPError as e:
+					lastErrorCode = e.code
+					# 422 Unprocessable Entity - the server understands the content type of the request entity, and the syntax of the request entity is correct, but it was unable to process the contained instructions.
+					if retryCounter and lastErrorCode in [422]:
+						printLog("WARNING", "HTTP error, return code {}, retrying".format(lastErrorCode))
+					else:
+						raise
+
+				#except Exception as e:
+				#	if retryCounter:
+				#		printLog("WARNING", "Error: {}, retying".format(str(e)))
+				#	else:
+				#		raise
+
+			return response.read(), response.getcode()
+
+		except:
+			if raiseOnError:
+				raise
+			return "", lastErrorCode
+
+		finally:
+			if response:
+				response.close()
+
+	def json(self, raiseOnError = True, **kwargs):
+		request = self._prepareRequest(**kwargs)
+		response, status = self._sendRequest(request, raiseOnError)
+		if response:
+			return json.loads(response), status
+		return {}, status
+
+class Gitea:
+	def __init__(self, config):
+
+		self.rest = Rest(endpoint = "{}/api/v1".format(config.get("giteaEndpoint")), headers = {
+			"Content-type": "application/json",
+			"Authorization": "token {}".format(config.get("giteaToken"))
+		})
+
+		output, status = self.rest.json(path = "/user")
+		self.uid = output["id"]
+		print("Using gitea user ID: {}".format(self.uid))
+
+	def process(self, url, user = None, password = None):
+		url.split("/")[-1].replace(".git", "")
+		m = {
+			"repo_name": url.split("/")[-1].replace(".git", ""),
+			"clone_addr": url,
+			"mirror": True,
+			"private": bool(user and password),
+			"uid": self.uid,
+		}
+
+		if bool(user and password):
+			m["auth_username"] = user
+			m["auth_password"] = password
+
+		jsonString = json.dumps(m)
+		output, status = self.rest.json(path = "/repos/migrate", raiseOnError = False, data = jsonString)
+
+		if status in [201]:
+			printLog("INFO", "Gitea mirror repository created: '{}'".format(m["repo_name"]))
+		elif status not in [409]:
+			printLog("ERROR", "HTTP error, return code {} while creating repository '{}'".format(status, m["repo_name"]))
+			raise
+
+class Hooks:
+	def __init__(self, config):
+		self.hooks = []
+		if "giteaToken" in config and "giteaToken" in config:
+			self.hooks.append(Gitea(config))
+
+	def process(self, **kwargs):
+		for hook in self.hooks:
+			hook.process(**kwargs)
+
 """
 Backup all Github repositories (public and private)
 """
@@ -27,17 +132,12 @@ def githubBackup(config):
 	if ("user" not in config) or ("token" not in config):
 		raise Exception("Missing user and/or token in the configuration")
 
-	request = urllib2.Request("https://api.github.com/user/repos?per_page=100")
+	hooks = Hooks(config)
+
 	base64string = base64.encodestring("%s/token:%s" % (config["user"], config["token"])).replace("\n", "")
-	request.add_header("Authorization", "Basic %s" % base64string)
-	response = None
-	repoList = []
-	try:
-		response = urllib2.urlopen(request)
-		repoList = json.loads(response.read())
-	finally:
-		if response:
-			response.close()
+	repoList, status = Rest().json(path = "https://api.github.com/user/repos?per_page=100", headers = {
+		"Authorization": "Basic {}".format(base64string)
+	})
 
 	# List the repos
 	repoUrlList = []
@@ -50,21 +150,31 @@ def githubBackup(config):
 	for uri in repoUrlList:
 		url = "https://%s:%s@github.com/%s.git" % (config["user"], config["token"], uri)
 		gitBackup(config["path"], url)
+		hooks.process(url = url)
 
 """
 Backing up git repository
 """
 def gitBackup(path, url):
 	repoPath = os.path.join(path, os.path.splitext(os.path.basename(url))[0])
-	# If file exists, do a git pull
-	if os.path.exists(repoPath):
+	
+	retryCounter = 4
+	while retryCounter:
+		retryCounter -= 1
+		
 		try:
-			subprocess.check_call(["git", "pull", url], cwd=repoPath)
+			# If file exists, do a git pull
+			if os.path.exists(repoPath):
+				subprocess.check_call(["git", "pull", url], cwd=repoPath)
+			else:
+				subprocess.check_call(["git", "clone", url], cwd=path)
+			break
+
 		except Exception as e:
-			printLog("git pull of %s failed: %s" % (repoPath, str(e)))
-			raise
-	else:
-		subprocess.check_call(["git", "clone", url], cwd=path)
+			printLog("ERROR", "git command for %s failed: %s" % (repoPath, str(e)))
+			if not retryCounter:
+				raise
+			printLog("INFO", "retrying...")
 
 # Main
 if __name__ == '__main__':
@@ -76,7 +186,9 @@ if __name__ == '__main__':
 			#	"user": USERNAME,
 			#	"token": API_TOKEN,
 			#	"ignoreFork": True,
-			#	"path": ABSOUTE_PATH
+			#	"path": ABSOUTE_PATH,
+			#	"giteaEndpoint": "http://localhost:6008",
+			#	"giteaToken": API_TOKEN
 			#}
 		]
 	}
