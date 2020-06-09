@@ -26,14 +26,15 @@ Execute process
 """
 def shell(command, noWait=False):
 	proc = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	if not noWait:
+	if noWait:
+		time. sleep(2)
+
+	if proc.poll() or noWait == False:
 		(stdout, stderr) = proc.communicate()
 		exitCode = proc.returncode
 		if exitCode != 0:
 			raise Exception(stderr)
 		return stdout
-	else:
-		time. sleep(1)
 
 	return ""
 
@@ -70,7 +71,7 @@ if __name__ == '__main__':
 			config.update(configUser)
 	
 		# Generate the ssh command to connect to the target
-		command = ["ssh", "-nfNT"] + config["auth"]
+		command = ["ssh", "-o", "StrictHostKeyChecking no", "-nfNT"] + config["auth"]
 		for port in config["ports"]:
 			portList = str(port).split(":")
 			assert len(portList) <= 2, "Wrong format for port '%s'" % (str(port))
@@ -80,7 +81,7 @@ if __name__ == '__main__':
 	
 		# Check if process is running
 		processList = shell(["ps", "-eo", "pid,command"])
-		regexpr = r"ssh\s+-nfNT\s+" + r"\s+".join([re.escape(str(cmd)) for cmd in config["auth"]]) + r"\b"
+		regexpr = r"ssh.*-nfNT\s+" + r"\s+".join([re.escape(str(cmd)) for cmd in config["auth"]]) + r"\b"
 		runningList = []
 		for process in processList.splitlines():
 			if re.search(regexpr, process, re.IGNORECASE):
