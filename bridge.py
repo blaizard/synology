@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: iso-8859-15 -*-
 
 import os
@@ -84,6 +84,7 @@ if __name__ == '__main__':
 		regexpr = r"ssh.*-nfNT\s+" + r"\s+".join([re.escape(str(cmd)) for cmd in config["auth"]]) + r"\b"
 		runningList = []
 		for process in processList.splitlines():
+			process = process.decode()
 			if re.search(regexpr, process, re.IGNORECASE):
 				pid = process.strip().split()[0]
 				runningList.append(pid)
@@ -119,3 +120,4 @@ if __name__ == '__main__':
 				
 	except Exception as e:
 		logPrint("error", "Unexpected error: %s" % (str(e)))
+		raise e
