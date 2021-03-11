@@ -16,6 +16,10 @@ from datetime import datetime
 # Also to access the server from external IP, use the followng option in
 # /etc/ssh/sshd_config
 # GatewayPorts yes
+#
+# Also install netstat on the remote server (apt-get install net-tools)
+#
+# After all of this, delete pending connections and restart sshd daemon (service sshd restart)
 
 CURRENT_DIRECTORY_PATH = os.path.realpath(os.path.dirname(__file__))
 PATH_LOG = os.path.join(CURRENT_DIRECTORY_PATH, "bridge.log")
@@ -98,6 +102,7 @@ if __name__ == '__main__':
 			for port in config["ports"]:
 				regexpr = r"tcp.*:\b" + re.escape(str(port).split(":")[0]) + r"\b.*LISTEN"
 				for openPort in openPortList.splitlines():
+					openPort = openPort.decode()
 					if re.search(regexpr, openPort, re.IGNORECASE):
 						nbConnectionsActive += 1
 						break

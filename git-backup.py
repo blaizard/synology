@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: iso-8859-15 -*-
 
 import os
@@ -6,7 +6,8 @@ import sys
 import json
 import socket
 from datetime import datetime
-import urllib2
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
 import base64
 import subprocess
 
@@ -26,7 +27,7 @@ class Rest:
 		self.headers = headers
 
 	def _prepareRequest(self, path, headers = {}, data = None):
-		request = urllib2.Request("{}{}".format(self.endpoint, path) if self.endpoint else path, data)
+		request = Request("{}{}".format(self.endpoint, path) if self.endpoint else path, data)
 		
 		# Update headers
 		newHeader = headers.copy()
@@ -44,10 +45,10 @@ class Rest:
 			while retryCounter:
 				retryCounter -= 1
 				try:
-					response = urllib2.urlopen(request)
+					response = urlopen(request)
 					break
 
-				except urllib2.HTTPError as e:
+				except HTTPError as e:
 					lastErrorCode = e.code
 					# 422 Unprocessable Entity - the server understands the content type of the request entity, and the syntax of the request entity is correct, but it was unable to process the contained instructions.
 					if retryCounter and lastErrorCode in [422]:
@@ -112,7 +113,6 @@ class Gitea:
 			printLog("INFO", "Gitea mirror repository created: '{}'".format(m["repo_name"]))
 		elif status not in [409]:
 			printLog("ERROR", "HTTP error, return code {} while creating repository '{}'".format(status, m["repo_name"]))
-			raise
 
 class Hooks:
 	def __init__(self, config):
@@ -134,7 +134,9 @@ def githubBackup(config):
 
 	hooks = Hooks(config)
 
-	base64string = base64.encodestring("%s/token:%s" % (config["user"], config["token"])).replace("\n", "")
+	tokenStr = "{}/token:{}".format(config["user"], config["token"])
+	tokenBytes = tokenStr.encode("ascii")
+	base64string = base64.b64encode(tokenBytes).decode("ascii").replace("\n", "")
 	repoList, status = Rest().json(path = "https://api.github.com/user/repos?per_page=100", headers = {
 		"Authorization": "Basic {}".format(base64string)
 	})
@@ -218,3 +220,4 @@ if __name__ == '__main__':
 				raise Exception("Unknown repository type \"" + repo["type"] + "\"")
 		except Exception as e:
 			printLog("ERROR", "Repository failed to backup: %s" % (str(e)))
+			raise e
