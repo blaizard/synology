@@ -76,6 +76,10 @@ if __name__ == '__main__':
 				f.write("conf_name={}\r\n".format(config["name"]))
 				f.write("proto={}\r\n".format(config["protocol"]))
 
+			logPrint("info", config["id"])
+			logPrint("info", config["name"])
+			logPrint("info", config["protocol"])
+
 			shell(["synovpnc", "reconnect", "--protocol={}".format(config["protocol"]), "--name={}".format(config["name"])])
 			logPrint("info", "Reconnection completed")
 				

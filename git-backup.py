@@ -27,6 +27,7 @@ class Rest:
 		self.headers = headers
 
 	def _prepareRequest(self, path, headers = {}, data = None):
+		data = None if data is None else data.encode()
 		request = Request("{}{}".format(self.endpoint, path) if self.endpoint else path, data)
 		
 		# Update headers
@@ -54,20 +55,21 @@ class Rest:
 					if retryCounter and lastErrorCode in [422]:
 						printLog("WARNING", "HTTP error, return code {}, retrying".format(lastErrorCode))
 					else:
-						raise
+						raise e
 
-				#except Exception as e:
-				#	if retryCounter:
-				#		printLog("WARNING", "Error: {}, retying".format(str(e)))
-				#	else:
-				#		raise
+				except Exception as e:
+					if retryCounter:
+						printLog("WARNING", "Error: {}, retying".format(str(e)))
+					else:
+						raise e
 
 			return response.read(), response.getcode()
 
 		except:
 			if raiseOnError:
 				raise
-			return "", lastErrorCode
+			output = response.read() if response is not None else ""
+			return output, lastErrorCode
 
 		finally:
 			if response:
@@ -112,7 +114,7 @@ class Gitea:
 		if status in [201]:
 			printLog("INFO", "Gitea mirror repository created: '{}'".format(m["repo_name"]))
 		elif status not in [409]:
-			printLog("ERROR", "HTTP error, return code {} while creating repository '{}'".format(status, m["repo_name"]))
+			printLog("ERROR", "HTTP error, return code {} while creating repository '{}': {}".format(status, m["repo_name"], str(output)[:200]))
 
 class Hooks:
 	def __init__(self, config):
@@ -167,7 +169,10 @@ def gitBackup(path, url):
 		try:
 			# If file exists, do a git pull
 			if os.path.exists(repoPath):
-				subprocess.check_call(["git", "pull", url], cwd=repoPath)
+				branch = subprocess.run(["git", "branch", "--show-current"], cwd=repoPath, capture_output=True).stdout.decode().strip()
+				subprocess.check_call(["git", "fetch", "--prune", url], cwd=repoPath)
+				subprocess.check_call(["git", "reset", "--hard", "origin/" + branch], cwd=repoPath)
+				subprocess.check_call(["git", "clean", "-fd"], cwd=repoPath)
 			else:
 				subprocess.check_call(["git", "clone", url], cwd=path)
 			break
