@@ -95,12 +95,12 @@ class Gitea:
 		self.uid = output["id"]
 		print("Using gitea user ID: {}".format(self.uid))
 
-	def process(self, url, user = None, password = None):
+	def process(self, url, mirror, user = None, password = None):
 		url.split("/")[-1].replace(".git", "")
 		m = {
 			"repo_name": url.split("/")[-1].replace(".git", ""),
 			"clone_addr": url,
-			"mirror": True,
+			"mirror": mirror,
 			"private": bool(user and password),
 			"uid": self.uid,
 		}
@@ -155,7 +155,7 @@ def githubBackup(config):
 	for uri in repoUrlList:
 		url = "https://%s:%s@github.com/%s.git" % (config["user"], config["token"], uri)
 		gitBackup(config["path"], url)
-		hooks.process(url = url)
+		hooks.process(url = url, mirror = True)
 
 def gitFolder(config):
 	"""
@@ -168,7 +168,7 @@ def gitFolder(config):
 		origin = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=path / directory, capture_output=True).stdout.decode().strip()
 		if config["origin"] not in origin:
 			continue
-		hooks.process(url = str(pathlib.Path(config["pathDocker"]) / directory))
+		hooks.process(url = str(pathlib.Path(config["pathDocker"]) / directory), mirror = False)
 		gitBackup(path, origin)
 
 def gitBackup(path, url):
@@ -180,13 +180,12 @@ def gitBackup(path, url):
 	retryCounter = 4
 	while retryCounter:
 		retryCounter -= 1
-		
+
 		try:
 			# If file exists, do a git pull
 			if os.path.exists(repoPath):
 				branch = subprocess.run(["git", "branch", "--show-current"], cwd=repoPath, capture_output=True).stdout.decode().strip()
-				subprocess.check_call(["git", "fetch", "--prune", url], cwd=repoPath)
-				subprocess.check_call(["git", "reset", "--hard", "origin/" + branch], cwd=repoPath)
+				subprocess.check_call(["git", "pull", "-X", "theirs", url], cwd=repoPath)
 				subprocess.check_call(["git", "clean", "-fd"], cwd=repoPath)
 			else:
 				subprocess.check_call(["git", "clone", url], cwd=path)
