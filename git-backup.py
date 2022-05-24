@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import socket
+import pathlib
 from datetime import datetime
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError
@@ -53,7 +54,7 @@ class Rest:
 					lastErrorCode = e.code
 					# 422 Unprocessable Entity - the server understands the content type of the request entity, and the syntax of the request entity is correct, but it was unable to process the contained instructions.
 					if retryCounter and lastErrorCode in [422]:
-						printLog("WARNING", "HTTP error, return code {}, retrying".format(lastErrorCode))
+						printLog("WARNING", "HTTP error, return code {}, retrying: {}".format(lastErrorCode, str(e)[:200]))
 					else:
 						raise e
 
@@ -126,10 +127,10 @@ class Hooks:
 		for hook in self.hooks:
 			hook.process(**kwargs)
 
-"""
-Backup all Github repositories (public and private)
-"""
 def githubBackup(config):
+	"""
+	Backup all Github repositories (public and private)
+	"""
 
 	if ("user" not in config) or ("token" not in config):
 		raise Exception("Missing user and/or token in the configuration")
@@ -156,10 +157,24 @@ def githubBackup(config):
 		gitBackup(config["path"], url)
 		hooks.process(url = url)
 
-"""
-Backing up git repository
-"""
+def gitFolder(config):
+	"""
+	Backup a whole directory and filter by origin.
+	"""
+
+	hooks = Hooks(config)
+	path = pathlib.Path(config["path"])
+	for directory in os.listdir(path):
+		origin = subprocess.run(["git", "config", "--get", "remote.origin.url"], cwd=path / directory, capture_output=True).stdout.decode().strip()
+		if config["origin"] not in origin:
+			continue
+		hooks.process(url = str(pathlib.Path(config["pathDocker"]) / directory))
+		gitBackup(path, origin)
+
 def gitBackup(path, url):
+	"""
+	Backing up git repository
+	"""
 	repoPath = os.path.join(path, os.path.splitext(os.path.basename(url))[0])
 	
 	retryCounter = 4
@@ -221,6 +236,9 @@ if __name__ == '__main__':
 				githubBackup(repo)
 			elif repo["type"] == "git":
 				gitBackup(repo["path"], url)
+			# This option must be enabled: IMPORT_LOCAL_PATHS = true
+			elif repo["type"] == "folder":
+				gitFolder(repo)
 			else:
 				raise Exception("Unknown repository type \"" + repo["type"] + "\"")
 		except Exception as e:
