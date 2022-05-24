@@ -20,6 +20,10 @@ from datetime import datetime
 # Also install netstat on the remote server (apt-get install net-tools)
 #
 # After all of this, delete pending connections and restart sshd daemon (service sshd restart)
+#
+# If you want to forward ports with a NAT rule, do as follow:
+# iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 25 -j REDIRECT --to-port 2525
+# To view: iptables -t nat -L -n -v
 
 CURRENT_DIRECTORY_PATH = os.path.realpath(os.path.dirname(__file__))
 PATH_LOG = os.path.join(CURRENT_DIRECTORY_PATH, "bridge.log")
