@@ -1,0 +1,3 @@
+[submodule "reconnect_vpn"]
+	path = reconnect_vpn
+	url = https://github.com/ianharrier/synology-scripts.git
