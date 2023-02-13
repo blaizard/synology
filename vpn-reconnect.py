@@ -38,8 +38,10 @@ EVENT_NO_REMOTE = "no remote"
 EVENT_REBOOT = "reboot"
 EVENT_NO_REBOOT_YET = "no reboot yet"
 EVENT_RECONNECT = "reconnect"
+EVENT_RECONNECT_FAILED = "reconnect failed"
 EVENT_NO_PROFILE = "no profile"
 EVENT_EXCEPTION = "exception"
+EVENT_GOOD = "good"
 
 LogEntryStorage = typing.Tuple[int, str, typing.Any]
 
@@ -116,11 +118,16 @@ def main(config: typing.Any, log: Log) -> bool:
 
 	# Reconnect failed.
 	if result.returncode == 2:
+		log.add(EVENT_RECONNECT_FAILED)
 		return True
 
 	# Reconnect successfully.
 	if result.returncode == 1:
 		log.add(EVENT_RECONNECT)
+
+	# Already connected.
+	if result.returncode == 0:
+		log.add(EVENT_GOOD)
 
 	# Assert that it can reach the remote server.
 	if not isHTTPConnection(config["remote"], timeoutS = 10):
