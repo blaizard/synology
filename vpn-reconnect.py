@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
 		if isReboot:
 			# Check when was the last reboot
-			maybeReboot = self.log.lastReboot
+			maybeReboot = log.lastReboot
 			if maybeReboot is not None and maybeReboot.duration < 24 * 3600:
 				log.add(EVENT_NO_REBOOT_YET)
 				isReboot = False
