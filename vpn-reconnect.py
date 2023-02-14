@@ -23,11 +23,6 @@ def isHTTPConnection(url: str, timeoutS: int = 5) -> None:
 	finally:
 		conn.close()
 
-def isInternet() -> bool:
-	"""Check if there is a connection to internet."""
-
-	return isHTTPConnection("8.8.8.8")
-
 def reboot() -> None:
 	"""Reboot the system."""
 
@@ -104,7 +99,7 @@ def main(config: typing.Any, log: Log) -> bool:
 
 	# Check if there is access to internet.
 	# There is nothing to just but wait.
-	if not isInternet():
+	if not isHTTPConnection(config["internet"], timeoutS = 30):
 		log.add(EVENT_NO_INTERNET)
 		return False
 
@@ -130,7 +125,7 @@ def main(config: typing.Any, log: Log) -> bool:
 		log.add(EVENT_GOOD)
 
 	# Assert that it can reach the remote server.
-	if not isHTTPConnection(config["remote"], timeoutS = 10):
+	if not isHTTPConnection(config["remote"], timeoutS = 30):
 		log.add(EVENT_NO_REMOTE)
 		return True
 
