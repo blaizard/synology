@@ -136,6 +136,7 @@ if __name__ == '__main__':
 	# Read the configuration.
 	configRaw = json.loads(configPath.read_text()) if configPath.is_file() else {}
 	config = {
+		"internet": "8.8.8.8",
 		"remote": "8.8.8.8",
 		"logs": []
 	}
