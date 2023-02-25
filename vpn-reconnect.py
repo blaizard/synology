@@ -7,6 +7,7 @@ import http.client as httplib
 import json
 import time
 import typing
+import datetime
 
 scriptDirectoryPath = pathlib.Path(__file__).parent.resolve()
 configPath = scriptDirectoryPath / "vpn-reconnect.json"
@@ -23,6 +24,9 @@ def isHTTPConnection(url: str, timeoutS: int = 5) -> None:
 	finally:
 		conn.close()
 
+def getDateTime() -> str:
+	return str(datetime.datetime.now())
+
 def reboot() -> None:
 	"""Reboot the system."""
 
@@ -38,7 +42,7 @@ EVENT_NO_PROFILE = "no profile"
 EVENT_EXCEPTION = "exception"
 EVENT_GOOD = "good"
 
-LogEntryStorage = typing.Tuple[int, str, typing.Any]
+LogEntryStorage = typing.Tuple[int, str, typing.Optional[str]]
 
 class LogEntry:
 	def __init__(self, item: LogEntryStorage) -> None:
@@ -57,7 +61,7 @@ class LogEntry:
 		return self.item[1]
 
 	@property
-	def args(self) -> typing.Optional[typing.Any]:
+	def args(self) -> typing.Optional[str]:
 		return self.item[2]
 
 class Log:
@@ -83,10 +87,14 @@ class Log:
 
 		return None
 
-	def add(self, event: str, args: typing.Any = None) -> None:
+	def add(self, event: str, args: typing.Optional[str] = None) -> None:
 		"""Add a new event to the list."""
 
-		self.data.append((int(time.time()), event, args))
+		# If the previous event is the same, do nothing.
+		if self.last and self.last.event == event:
+			return
+
+		self.data.append((int(time.time()), event, getDateTime() if args is None else args))
 		if len(self.data) > 64:
 			self.data = self.data[-64:]
 
@@ -160,6 +168,7 @@ if __name__ == '__main__':
 	finally:
 		if isReboot:
 			log.add(EVENT_REBOOT)
+		config["last"] = getDateTime()
 		configPath.write_text(json.dumps(config, indent=4))
 
 	# Reboot if needed.
