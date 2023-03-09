@@ -87,11 +87,11 @@ class Log:
 
 		return None
 
-	def add(self, event: str, args: typing.Optional[str] = None) -> None:
+	def add(self, event: str, args: typing.Optional[str] = None, force: bool = False) -> None:
 		"""Add a new event to the list."""
 
 		# If the previous event is the same, do nothing.
-		if self.last and self.last.event == event:
+		if not force and self.last and self.last.event == event:
 			return
 
 		self.data.append((int(time.time()), event, getDateTime() if args is None else args))
@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
 	finally:
 		if isReboot:
-			log.add(EVENT_REBOOT)
+			log.add(EVENT_REBOOT, force=True)
 		config["last"] = getDateTime()
 		configPath.write_text(json.dumps(config, indent=4))
 
