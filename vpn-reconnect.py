@@ -12,19 +12,30 @@ import datetime
 scriptDirectoryPath = pathlib.Path(__file__).parent.resolve()
 configPath = scriptDirectoryPath / "vpn-reconnect.json"
 
-def isHTTPConnection(url: str, timeoutS: int = 5) -> None:
+def isHTTPConnection(url: str, timeoutS: int = 5, tries: int = 1) -> None:
 	"""Check if there is a connection to an HTTP server."""
 
-	conn = httplib.HTTPSConnection(url, timeout=timeoutS)
-	try:
-		conn.request("HEAD", "/")
-		return True
-	except Exception:
-		return False
-	finally:
-		conn.close()
+	assert tries > 0, "Number of tries must be at least one."
+
+	isSuccess = False
+	while tries:
+
+		tries -= 1
+		conn = httplib.HTTPSConnection(url, timeout=timeoutS)
+		try:
+			conn.request("HEAD", "/")
+			isSuccess = True
+			break
+		except Exception:
+			pass
+		finally:
+			conn.close()
+
+	return isSuccess
 
 def getDateTime() -> str:
+	"""Get the current date/time as a string."""
+
 	return str(datetime.datetime.now())
 
 def reboot() -> None:
@@ -95,8 +106,8 @@ class Log:
 			return
 
 		self.data.append((int(time.time()), event, getDateTime() if args is None else args))
-		if len(self.data) > 64:
-			self.data = self.data[-64:]
+		while len(self.data) > 64:
+			self.data.pop(0)
 
 def main(config: typing.Any, log: Log) -> bool:
 	"""Check and maintain the VPN connection.
@@ -133,7 +144,7 @@ def main(config: typing.Any, log: Log) -> bool:
 		log.add(EVENT_GOOD)
 
 	# Assert that it can reach the remote server.
-	if not isHTTPConnection(config["remote"], timeoutS = 30):
+	if not isHTTPConnection(config["remote"], timeoutS = 30, tries = 3):
 		log.add(EVENT_NO_REMOTE)
 		return True
 
