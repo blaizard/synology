@@ -144,7 +144,7 @@ def main(config: typing.Any, log: Log) -> bool:
 		log.add(EVENT_GOOD)
 
 	# Assert that it can reach the remote server.
-	if not isHTTPConnection(config["remote"], timeoutS = 30, tries = 3):
+	if not isHTTPConnection(config["remote"], timeoutS = 60, tries = 10):
 		log.add(EVENT_NO_REMOTE)
 		return True
 
