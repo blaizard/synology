@@ -101,6 +101,9 @@ class Log:
 	def add(self, event: str, args: typing.Optional[str] = None, force: bool = False) -> None:
 		"""Add a new event to the list."""
 
+		# For debugging purposes, print the output.
+		print(f"EVENT: '{event}'", args)
+
 		# If the previous event is the same, do nothing.
 		if not force and self.last and self.last.event == event:
 			return
@@ -117,10 +120,10 @@ def main(config: typing.Any, log: Log) -> bool:
 	"""
 
 	# Check if there is access to internet.
-	# There is nothing to just but wait.
+	# Reboot if not, it happens that internet is not accessible somehow anymore.
 	if not isHTTPConnection(config["internet"], timeoutS = 30):
 		log.add(EVENT_NO_INTERNET)
-		return False
+		return True
 
 	# Attempt to re-connect if the connection is not up.
 	result = subprocess.run(["/bin/bash", str(scriptDirectoryPath / "reconnect_vpn" / "reconnect-vpn.sh")])
