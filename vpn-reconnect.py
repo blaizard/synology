@@ -56,29 +56,38 @@ EVENT_GOOD = "good"
 LogEntryStorage = typing.Tuple[int, str, typing.Optional[str]]
 
 class LogEntry:
-	def __init__(self, item: LogEntryStorage) -> None:
-		self.item = item
-	
+	def __init__(self, storage: LogEntryStorage) -> None:
+		self.storage = storage
+
+	@staticmethod
+	def make(event: str, args: typing.Optional[str] = None) -> "LogEntry":
+		return LogEntry((time.time(), event, args))
+
 	@property
 	def timestamp(self) -> int:
-		return self.item[0]
+		return self.storage[0]
 
 	@property
 	def duration(self) -> int:
 		return int(time.time() - self.timestamp)
 
 	@property
-	def event(self) -> str:
-		return self.item[1]
+	def events(self) -> str:
+		return self.storage[1]
 
 	@property
 	def args(self) -> typing.Optional[str]:
-		return self.item[2]
+		return self.storage[2]
+
+	def isEvent(self, event: str) -> bool:
+		return event in self.event.split(",")
 
 class Log:
 
 	def __init__(self, data: typing.List[LogEntryStorage]) -> None:
 		self.data = data
+		self.force = False
+		self.toWrite = []
 
 	@property
 	def last(self) -> typing.Optional[LogEntry]:
@@ -92,9 +101,10 @@ class Log:
 	def lastReboot(self) -> typing.Optional[LogEntry]:
 		"""Get the latest entry from the log."""
 
-		for item in reversed(self.data):
-			if item[1] == EVENT_REBOOT:
-				return LogEntry(item)
+		for storage in reversed(self.data):
+			entry = LogEntry(storage)
+			if entry.isEvent(EVENT_REBOOT):
+				return entry
 
 		return None
 
@@ -104,11 +114,20 @@ class Log:
 		# For debugging purposes, print the output.
 		print(f"EVENT: '{event}'", args)
 
+		self.force |= force
+		self.toWrite.append(LogEntry.make(event, args))
+
+	def write(self) -> None:
+		"""Write the current config."""
+
+		events = ",".join([entry.events for entry in self.toWrite])
+		args = ",".join([getDateTime()] + [entry.args for entry in self.toWrite if entry.args])
+
 		# If the previous event is the same, do nothing.
-		if not force and self.last and self.last.event == event:
+		if not self.force and self.last and self.last.events == events:
 			return
 
-		self.data.append((int(time.time()), event, getDateTime() if args is None else args))
+		self.data.append(LogEntry.make(events, args).storage)
 		while len(self.data) > 64:
 			self.data.pop(0)
 
@@ -182,6 +201,7 @@ if __name__ == '__main__':
 	finally:
 		if isReboot:
 			log.add(EVENT_REBOOT, force=True)
+		log.write()
 		config["last"] = getDateTime()
 		configPath.write_text(json.dumps(config, indent=4))
 
