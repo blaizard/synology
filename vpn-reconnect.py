@@ -80,7 +80,7 @@ class LogEntry:
 		return self.storage[2]
 
 	def isEvent(self, event: str) -> bool:
-		return event in self.event.split(",")
+		return event in self.events.split(",")
 
 class Log:
 
